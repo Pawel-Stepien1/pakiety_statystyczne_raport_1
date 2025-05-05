@@ -7,10 +7,10 @@ Celem raportu jest zbadanie na podstawie zgromadzonych danych, dotyczących kosz
 - W jakim regionie świata dysponujemy największą liczbą wiarygodnych danych, a gdzie zebrane dane wymagają dodatkowego uzupełnienia, potwierdzenia bądź poprawy?
 
 ## Pliki
-Cała analiza została przeprowadzona przy użyciu języka programowania r. Raport został wygenerowany w Quarto.    
-Raport_quarto.qmd - dokument Quarto, zawiera część tekstową (markdown) oraz kody w języku programowania r.
+Cała analiza została przeprowadzona przy użyciu języka programowania r. Raport został wygenerowany w Quarto.  
+Raport_quarto.qmd - dokument Quarto, zawiera część tekstową (markdown) oraz kody w języku programowania r.  
 Raport_word.docx - wygenerowany oficjalny raport w formacie word, przy użyciu Quarto.
 
-cost-of-living.csv - dane dotyczące kosztów życia w różnych miastach na całym świecie.
+cost-of-living.csv - dane dotyczące kosztów życia w różnych miastach na całym świecie.  
 Dane pochodzą z Kaggle.  
 https://www.kaggle.com/datasets/mvieira101/global-cost-of-living
