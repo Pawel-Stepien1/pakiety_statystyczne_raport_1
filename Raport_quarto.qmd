@@ -1,0 +1,719 @@
+---
+title: "Raport 1"
+format: docx
+editor: visual
+author: Magdalena Sudół 276000, Paweł Stępień 276038
+---
+
+## Cel Raportu
+
+Celem raportu jest zbadanie na podstawie zgromadzonych danych, dotyczących kosztów życia na całym świecie w 2022 roku, jak zmieniają się ceny wybranych produktów w zależności od miejsca i odkrycie czynników wpływających na ich wysokość. Wybrane przez nas dane, zaprezentowane w pliku "Global Cost of Living", zostały pobrane ze strony kaggle.com. Wyodrębniono je ze strony numbeo.com, gdzie użytkownicy z całego świata uzupełniają informacje między innymi o cenach produktów i usług w poszczególnych miejscach. Dane zostały udostępnione na licencji CC0 (Creative Commons Zero; przekazane do domeny publicznej). Aby zrealizować cel raportu, poszukamy odpowiedzi na następujące pytania badawcze:
+
+-   Jak kształtują się różnice cen pomiędzy stolicami krajów a resztą większych miast?
+
+-   Które miasto w Polsce jest najlepszym miejscem do zamieszkania, biorąc pod uwagę ceny produktów i usług?
+
+-   W jakim regionie świata dysponujemy największą liczbą wiarygodnych danych, a gdzie zebrane dane wymagają dodatkowego uzupełnienia, potwierdzenia bądź poprawy?
+
+## Opis zmiennych
+
+Pierwsza kolumna danych to numery identyfikacyjne miast (wartości od 0 do 4873)). Druga kolumna zawiera nazwy miast, natomiast trzecia kolumna - nazw państw - jest kolumną z wartościami kategorycznymi (dysponujemy ograniczoną liczbą krajów i terytoriów - 204, a każde miasto jest przypisane do jednego z nich). Kolejne kolumny zawierają wartości numeryczne - są to ceny ponad 50 różnych produktów i usług, podane w dolarach amerykańskich, dlatego przyjmują one wartości większe lub równe 0 i są wyrażone w liczbach o 2 miejscach po przecinku. W naszej analizie ograniczymy się do wyboru kilku spośród nich, do których należą: posiłek dla 2 osób w restauracji o średnio wysokim poziomie cen, cappuccino w kawiarni, bochenek chleba, 1.5-litrowa butelka wody w supermarkecie, 1 kg filetów z kurczaka, 1 kg bananów, 1 kg ziemniaków, bilet miesięczny na komunikację miejską, 1 l paliwa, koszty utrzymania 85m\^2 mieszkania (ogrzewanie, woda, prąd itd.), opłata za internet, cena za m\^2 nieruchomości w centrum oraz poza centrum oraz średnia miesięczna wypłata. Jako ostatnią widzimy zmienną kategoryczną, mówiącą o tym, czy dane z danego miasta są wystarczająco wiarygodne (wartość 1), czy wymagane jest potwierdzenie przez innych użytkowników strony numbeo.com poziomu cen w danym miejscu (wartość 0). Przed rozpoczęciem analizy danych przystąpiliśmy do wstępnej obróbki danych. Elementem tej operacji była zmiana nazw kolumn, zawierających ceny produktów: "x1", "x2", "x3", ... . Zostały zamienione na właściwe nazwy produktów, zgodnie z objaśnieniami znajdującymi się na stronie kaggle.com. Wprowadziliśmy również zmianę nazwy miasta "London", leżącego w Kanadzie, na "London_Canada", z uwagi na możliwe problemy wynikające z podobieństwa nazwy tego miasta do nazwy angielskiej stolicy. W danych występują braki, których nie uzupełniamy - wstawienie w ich miejsce wybranej statystyki, np. średniej, mogłoby wpłynąć na wyniki. Zamiast tego podczas tworzenia wykresów wartości NA zostają pominięte - nie są uwzględniane w obliczeniach ani wykresach w raporcie. W pierwszym podpunkcie, jeżeli wśród cen w stolicy pojawiłyby się braki danych, zamiast danego państwa należy brać pod uwagę inne - nie można odnieść mediany wartości cen w poszczególnych miastach w kraju do stolicy, jeżeli nie ma danych ze stolicy. W praktyce jednak problem taki nie wystąpił. W drugim podpunkcie również należy pominąć w ostatecznym zestawieniu miasta, dla których pojawiły się braki danych w kluczowych kolumnach (takich, gdzie ceny pomiędzy miastami znacząco się różnią), ze względu na brak informacji i przez to niemożliwość odniesienia danego miasta do innych miast Polski. W trzecim podpunkcie wartości brakujące nie występowały - każde miasto miało przydzieloną wartość 0 lub 1, w zależności od tego, czy uzupełnienie lub weryfikacja danych były konieczne.
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(flextable)
+```
+
+```{r}
+#| echo: false
+
+# Tłumaczenie nazw państw na polski
+country_translation <- c(
+  "United States" = "Stany Zjednoczone",
+  "Canada" = "Kanada",
+  "Germany" = "Niemcy",
+  "France" = "Francja",
+  "Poland" = "Polska",
+  "United Kingdom" = "Wielka Brytania",
+  "Italy" = "Włochy",
+  "Spain" = "Hiszpania",
+  "Australia" = "Australia",
+  "India" = "Indie",
+  "China" = "Chiny",
+  "Brazil" = "Brazylia",
+  "Russia" = "Rosja",
+  "Netherlands" = "Holandia",
+  "Turkey" = "Turcja",
+  "Portugal" = "Portugalia",
+  "Romania" = "Rumunia",
+  "Mexico" = "Meksyk",
+  "Philippines" = "Filipiny",
+  "Japan" = "Japonia"
+)
+```
+
+## Analiza danych
+
+### Podpunkt 1
+
+Pierwszym pytaniem, na które znajdziemy odpowiedź, będzie kwestia różnic cenowych pomiędzy stolicą a resztą miast w poszczególnych krajach. Aby zbadać te różnice, policzymy, ile razy zostają wymienione w danych miasta z każdego kraju, a następnie weźmiemy pod uwagę 10 państw o największej liczbie miast. Wyniki opisanej procedury zostały zilustrowane na wykresie (Rys. 1).
+
+Analizując wykres (Rys. 1), możemy zauważyć, że krajem, którego miasta pojawiają się w zestawieniu najczęściej, są Stany Zjednoczone. Amerykańskich miast jest w danych kilkakrotnie więcej, niż miast Włoch - kraju, który znalazł się na drugim miejscu. Wśród państw, których miasta pojawiają się w danych najczęściej, znajdują się również Indie, Brazylia, Zjednoczone Królestwo, Niemcy, Rosja, Kanada, Francja oraz Chiny. Przyczyną tego może być fakt, że są to wielomilionowe państwa o dużej powierzchni, w granicach których jest położonych wiele miejscowości. To właśnie ceny w miastach z tych krajów będziemy brali pod uwagę. Stanowią one aż 48,97% wszystkich danych.
+
+```{r}
+#| echo: false
+#| warning: false
+
+# Wczytanie danych z pliku csv
+dane <- read.csv("cost-of-living.csv")
+
+dane_wybrane <- dane[, c("city", "country", "x2", "x6", "x10", "x14", "x17", "x20", "x23", "x29", "x33", "x36", "x38", "x52", "x53", "x54","data_quality")]
+colnames(dane_wybrane) <- c("Miasto", "Panstwo", "produkt_posiłek_dla_2osób", "produkt_cappuccino","produkt_chleb_500g","produkt_filet_kurczak_1kg","produkt_banany_1kg","produkt_ziemniaki_1kg","produkt_butelka wody_1,5l","produkt_bilet_miesięczny_MPK","produkt_paliwo_1l","produkt_rachunki_za_85_metrowe_mieszkanie","produkt_internet","produkt_cena_za_m_centrum","produkt_cena_za_m_poza_centrum", "produkt_średnia_miesięczna_wypłata","jakosc")
+
+data <- dane_wybrane
+data[1069, 1] <- "London_Canada"
+
+# Lista stolic
+capitals <- c("Delhi", "Paris", "Beijing", "Moscow", "Berlin","Ottawa","London","Rome","Washington","Brasilia")
+
+# Wybieramy 10 państw z największą liczbą miast
+cities_per_country <- data %>%
+  group_by(Panstwo) %>%
+  summarise(n_cities = n_distinct(Miasto)) %>%
+  arrange(desc(n_cities)) %>%
+  head(10)
+
+# Filtrujemy dane do 10 państw
+top_countries <- cities_per_country$Panstwo
+filtered_data <- data %>% filter(Panstwo %in% top_countries)
+
+# Obliczamy medianę cen produktów dla każdego państwa (z wyłączeniem stolic)
+medians <- filtered_data %>%
+  filter(!Miasto %in% capitals) %>% 
+  group_by(Panstwo) %>%
+  summarise(across(starts_with("produkt_"), median, na.rm = TRUE))
+
+medians_alfabetycznie <- medians[order(medians$Panstwo), ]
+
+# Dodajemy dane o stolicach
+capital_data <- filtered_data %>% filter(Miasto %in% capitals)
+capital_data <- capital_data[, -c(1, ncol(capital_data))]
+capital_data_alfabetycznie <- capital_data[order(capital_data$Panstwo), ]
+
+Tabela_o_ile_procent <- medians_alfabetycznie
+Tabela_o_ile_procent[-1] <- (capital_data_alfabetycznie[-1] - medians_alfabetycznie[-1]) / medians_alfabetycznie[-1] * 100
+Tabela_o_ile_procent_wszystko <- Tabela_o_ile_procent[-1]
+srednie_Tabela_o_ile_procent_wszystko <- round(colMeans(Tabela_o_ile_procent_wszystko),2)
+
+colnames(Tabela_o_ile_procent_wszystko) <- sub("produkt_", "", colnames(Tabela_o_ile_procent_wszystko))
+
+```
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+# Tłumaczymy nazwy państw na polski
+cities_per_country_polish_names <- cities_per_country %>%
+  mutate(Panstwo = recode(Panstwo, !!!country_translation))
+
+ggplot(cities_per_country_polish_names, aes(x = reorder(Panstwo, n_cities), y = n_cities)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "10 państw z największą liczbą miast (Rys. 1)",
+    x = "Państwo",
+    y = "Liczba miast"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+    axis.text.y = element_text(size = 16),                        
+    axis.title.x = element_text(size = 20),                       
+    axis.title.y = element_text(size = 20),                       
+    plot.title = element_text(hjust = 0.5, size = 26))
+```
+
+#### Stosunek cen produktów i usług w skali świata
+
+Analizując różnice w cenach pomiędzy stolicami a pozostałymi miastami w wybranych krajach (Rys. 2) (w naszym przypadku określenie „pomiędzy stolicami a pozostałymi miastami” odnosi się do sytuacji, gdzie porównujemy cenę w stolicy do mediany cen z innych miast), warto szczegółowo przyjrzeć się poszczególnym kategoriom produktów i usług. Rozbicie analizy na takie obszary jak produkty spożywcze, usługi, paliwo, ceny nieruchomości czy średnia wypłata pozwala zrozumieć, które segmenty rynku odznaczają się największymi dysproporcjami i jakie mogą być przyczyny tego zjawiska.
+
+W stolicach analizowanych państw ceny produktów spożywczych są średnio droższe o kilkanaście procent w porównaniu z innymi miastami. Relatywnie niewielka różnica może wynikać z ustandaryzowanego rynku detalicznego oraz wysokiej konkurencji w handlu artykułami spożywczymi. W miastach poza stolicą ceny mogą być obniżone dzięki niższym kosztom operacyjnym, np. wynajmu powierzchni handlowych. Dodatkowo, w mniejszych miastach i na terenach oddalonych od stolic, istotną rolę odgrywają regionalni dostawcy. Lokalne gospodarstwa rolne czy producenci żywności, którzy działają w bezpośrednim sąsiedztwie rynku zbytu, mogą oferować produkty w niższych cenach dzięki ograniczeniu kosztów transportu i pośredników. Bliskość dostawców często przekłada się na lepsze ceny, a także na możliwość szybszego dostarczania świeżych produktów. W stolicach natomiast, z uwagi na większą skalę operacji, łańcuch dostaw bywa bardziej złożony, co może prowadzić do wyższych kosztów i ostatecznie wpływać na ceny detaliczne.
+
+Ceny usług są wyraźnie wyższe w stolicach – różnica sięga kilkudziesięciu procent w porównaniu z pozostałymi miastami. Ten wzrost wynika z wyższych kosztów prowadzenia działalności, takich jak czynsze, wynagrodzenia dla pracowników czy większe opłaty związane z lokalizacją. Dodatkowo, większa liczba zamożnych konsumentów w stolicach napędza popyt na usługi o wyższym standardzie, co również podnosi ich koszt. Wyższe ceny widoczne są w sektorze gastronomicznym. Restauracje i kawiarnie w stolicach często dostosowują swoje ceny do bardziej zamożnej klienteli. Podobna tendencja dotyczy usług transportowych – cena biletu na komunikację publiczną w stolicach bywa znacznie wyższa niż w innych miastach. Jest to spowodowane bardziej rozbudowaną infrastrukturą oraz wyższymi kosztami jej utrzymania, a także większym popytem na transport publiczny w dużych metropoliach.
+
+Ceny paliwa pozostają jednolite w skali kraju, niezależnie od tego, czy analizowane są stolice, czy inne miasta. Taka stabilność wynika przede wszystkim z charakteru rynku paliwowego, który jest często silnie regulowany przez państwo. Ponadto, firmy zajmujące się dystrybucją paliw zazwyczaj dążą do ujednolicenia cen na swoich stacjach, aby zachować konkurencyjność i uniknąć dysproporcji w odczuciu klientów. Jednolitość cen paliwa można również tłumaczyć względnie równym dostępem do infrastruktury dystrybucyjnej, takiej jak rafinerie, bazy przeładunkowe i stacje benzynowe, które umożliwiają dostarczanie paliwa w podobnym koszcie w różne rejony kraju. Nawet w stolicach, gdzie koszty życia są wyższe, ceny paliwa często pozostają porównywalne z tymi w mniejszych miejscowościach, ponieważ konsumenci mogliby łatwo dostrzec i reagować na nieuzasadnione różnice, np. poprzez tankowanie poza miastem.
+
+Średnia wypłata w stolicach jest wyższa o blisko 54% w porównaniu z resztą kraju. Tę znaczącą różnicę można przypisać kilku czynnikom związanym z koncentracją gospodarki i specyfiką rynków pracy w stolicach. Przede wszystkim, stolice są centrami biznesowymi i administracyjnymi, gdzie swoją siedzibę mają rządy, korporacje międzynarodowe, instytucje finansowe oraz liczne firmy z sektora nowoczesnych usług, takich jak IT, konsulting czy marketing. Pracodawcy w tych branżach oferują zwykle wyższe wynagrodzenia, ponieważ wymagają specjalistycznych umiejętności i fachowej wiedzy. Dodatkowo, wyższe pensje w stolicach odzwierciedlają także większe koszty życia. Pracodawcy, chcąc przyciągnąć pracowników, muszą uwzględniać wyższe ceny nieruchomości, usług oraz ogólne wydatki na życie w dużych metropoliach.
+
+Spośród analizowanych kategorii największe różnice między stolicami a innymi miastami dotyczą cen nieruchomości. Średni koszt metra kwadratowego w centrum stolic jest blisko 200% wyższy niż w centrach innych miast, a poza centrum różnica ta wynosi około 140%. Tak znaczne dysproporcje wynikają z kilku kluczowych czynników. W stolicach podaż gruntów i przestrzeni mieszkalnej jest silnie ograniczona, szczególnie w centralnych dzielnicach. Historyczna zabudowa, restrykcyjne przepisy dotyczące zagospodarowania przestrzennego oraz ograniczenia wynikające z potrzeby ochrony terenów zielonych czy zabytków dodatkowo zmniejszają dostępność nowych inwestycji. W połączeniu z wysokim popytem prowadzi to do gwałtownego wzrostu cen. Ponadto, stolice przyciągają zamożnych mieszkańców i inwestorów, dla których lokalizacja w centrum miasta często wiąże się z prestiżem i łatwym dostępem do kluczowych instytucji, centrów biznesowych czy kulturalnych. To sprawia, że nieruchomości w stolicach postrzegane są jako dobra inwestycja o dużym potencjale wzrostu wartości, co dodatkowo podbija ceny.\
+Choć różnica cen nieruchomości jest mniejsza poza centrum (około 140%), nadal jest znacząca. Wynika to z kilku czynników, takich jak dogodny dostęp do centrum miasta, dobra infrastruktura transportowa, rozwój obszarów podmiejskich oraz lepsze warunki życia, które przyciągają osoby poszukujące mieszkania w pobliżu stolicy, ale poza jej bezpośrednim centrum. Dodatkowo, warto zauważyć, że przedmieścia stolic w wielu przypadkach pełnią funkcję „sypialni” dla osób, które pracują w centrum, ale nie mogą sobie pozwolić na życie w droższych centralnych dzielnicach. Przedmieścia stają się coraz bardziej rozwinięte, a ich rola jako obszarów mieszkalnych rośnie, zwłaszcza gdy inwestycje infrastrukturalne (np. nowe linie metra, drogi szybkiego ruchu) poprawiają dostępność tych terenów.
+
+Różnice cen między stolicami a innymi miastami odzwierciedlają zróżnicowanie lokalnych rynków oraz specyficzne uwarunkowania gospodarcze i społeczne. W przypadku produktów spożywczych ceny w stolicach są wyższe o kilkanaście procent, co wynika z bardziej złożonych łańcuchów dostaw i wyższych kosztów operacyjnych. W mniejszych miastach niższe ceny są możliwe dzięki lokalnym dostawcom i mniejszym kosztom handlu. Usługi w stolicach są wyraźnie droższe – różnica sięga kilkudziesięciu procent – głównie z powodu wyższych kosztów prowadzenia działalności oraz większego popytu na usługi o wyższym standardzie, szczególnie widoczne w gastronomii i transporcie publicznym. Ceny paliwa pozostają jednolite w skali kraju, co wynika z regulacji państwowych i równego dostępu do infrastruktury dystrybucyjnej. Z kolei średnia wypłata w stolicach przewyższa zarobki w innych miastach o 54%, co jest efektem koncentracji kluczowych sektorów gospodarki oraz konieczności dostosowania wynagrodzeń do wyższych kosztów życia. Największe dysproporcje dotyczą jednak nieruchomości – w stolicach ich ceny są średnio o 200% wyższe w centrum i o 140% wyższe poza nim. Powodem są ograniczona podaż gruntów, wysoki popyt oraz prestiż lokalizacji.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+Tabela_o_ile_procent_wszystko_long <- data.frame(
+  Produkt = names(Tabela_o_ile_procent_wszystko),
+  Procenty = colMeans(Tabela_o_ile_procent_wszystko)
+)
+
+ggplot(Tabela_o_ile_procent_wszystko_long, aes(x = Produkt, y = Procenty)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    title = "Różnica w cenach produktów i usług w stolicy \nw porównaniu do innych miast (w %) w skali świata (Rys. 2)",
+    x = "Produkty i usługi",
+    y = "Procenty (%)"
+  ) +
+  geom_text(aes(label = round(Procenty, 2)), vjust = -0.5, size = 5) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+    axis.text.y = element_text(size = 16),                        
+    axis.title.x = element_text(size = 20),                       
+    axis.title.y = element_text(size = 20),                       
+    plot.title = element_text(hjust = 0.5, size = 22))
+```
+
+#### Chiny - państwo (spośród analizowanych), dla którego dysproporcja między cenami w stolicy a pozostałymi miastami jest największa
+
+Skupimy się teraz w naszej analizie na konkretnym państwie - Chiny. Spośród analizowanych krajów, stosunek cen w stolicy był w tym kraju największy względem innych miast. Z tego powodu uznaliśmy, że warto przyjrzeć się trochę bliżej Państwu Środka. Jeśli spojrzymy na wykres (Rys. 3), możemy zobaczyć, że Chiny ogólnie wpisują się w globalny trend, w którym ceny w stolicy są znacznie wyższe w porównaniu do innych miast, z Pekinem stanowiącym wyraźny przykład tego zjawiska. Jest to kraj o ogromnej dynamice rozwoju, który doświadcza szybkiej urbanizacji i znaczących różnic pomiędzy stolicą – Pekinem – a innymi miastami. Różnice te dotyczą zarówno cen produktów, usług, jak i nieruchomości, a ich przyczyny leżą w wielu czynnikach związanych z rozwojem gospodarczym, społecznym oraz specyficzną strukturą urbanistyczną i demograficzną Chin.
+
+W Pekinie ceny produktów spożywczych są wyższe o kilkanaście, a w niektórych przypadkach o kilkadziesiąt procent w porównaniu z innymi miastami Chin. Zjawisko to wynika z kilku czynników. Pekin pełni rolę jednego z głównych centrów handlowych i dystrybucyjnych, co wiąże się z wyższymi kosztami transportu i przechowywania. Ponadto, duże miasta przyciągają nie tylko krajowych producentów, ale i zagranicznych dostawców, którzy generują wyższe ceny. Z kolei w mniejszych miastach rośnie rola lokalnych dostawców, którzy mogą oferować tańsze produkty. Duże znaczenie mają również różnice w preferencjach konsumenckich. W Pekinie, który jest jednym z głównych ośrodków kulturowych i edukacyjnych Chin, zapotrzebowanie na produkty zagraniczne i luksusowe może prowadzić do wyższych cen w porównaniu z mniejszymi miastami, gdzie konsumenci kierują się głównie lokalnymi produktami i tradycyjnymi smakami. W miastach takich jak Guangzhou czy Hangzhou, zlokalizowanych w pobliżu głównych terenów rolniczych, ceny produktów spożywczych mogą być bardziej przystępne, podczas gdy Pekin, jako wielka aglomeracja, musi sprowadzać wiele artykułów spożywczych z innych regionów kraju lub innych państw, co podnosi ich koszt.
+
+Różnice w cenach usług w Pekinie w porównaniu do innych miast Chin są wyraźne. Na przykład cena posiłku w restauracji dla dwóch osób w Pekinie jest wyższa o 47%, a bilet miesięczny na komunikację miejską o 176%. Z jednej strony, wyższe ceny w stolicy wynikają z wysokich kosztów operacyjnych związanych z prowadzeniem działalności w mieście, w tym wynajmem powierzchni komercyjnych, wyższymi wynagrodzeniami pracowników, oraz kosztami utrzymania infrastruktury. Pekin to miasto z rozwiniętą siecią transportu publicznego, w tym jednym z najczęściej używanych systemów metra na świecie, który obsługuje miliony pasażerów dziennie. Duża liczba pasażerów, a także rosnący popyt na transport publiczny, zmusza do podwyższania opłat za bilety.\
+Z kolei małe miasta, gdzie gęstość zaludnienia jest mniejsza, a co za tym idzie, zapotrzebowanie na usługi jest mniejsze, utrzymują niższe ceny, szczególnie w sektorze gastronomicznym. Z jednej strony, w mniejszych miastach dominują tanie, lokalne restauracje, które oferują tradycyjne chińskie jedzenie, a z drugiej strony, Pekin jest pełen drogich restauracji międzynarodowych, które oferują kuchnię światową i kierują swoją ofertę do bardziej zamożnych klientów.
+
+W Chinach ceny paliwa są jednolite na terenie całego kraju, niezależnie od lokalizacji, w tym różnic między stolicą Pekinem a innymi miastami. Jest to efekt centralnego zarządzania rynkiem paliwowym przez rząd, który reguluje ceny na poziomie krajowym. Chociaż ceny mogą się zmieniać w zależności od globalnych wahań cen ropy naftowej, rząd chiński kontroluje je, aby uniknąć dużych rozbieżności regionalnych i zapewnić stabilność rynku paliwowego. Taka jednolitość cen wynika również z rozbudowanej infrastruktury dystrybucyjnej, która umożliwia równy dostęp do paliwa w różnych częściach kraju. Dzięki temu nie występują znaczące różnice w cenach paliwa pomiędzy stolicą a resztą Chin, co jest korzystne z punktu widzenia konsumentów, a także zapobiega ewentualnym napięciom społecznym wynikającym z odczuwalnych dysproporcji cenowych.
+
+Średnia wypłata w Pekinie jest wyższa o około 97% w stosunku do innych miast w Chinach. Wynika to z koncentracji wysoko płatnych stanowisk pracy w stolicy, zwłaszcza w takich branżach jak finanse, technologie, administracja państwowa oraz korporacje międzynarodowe. Pekin jest miejscem, w którym koncentruje się rozwój innowacyjnych branż, co przyciąga wysoko wykwalifikowanych specjalistów z całego kraju. Wysokie pensje są odpowiedzią na wyższe koszty życia w stolicy, które obejmują wysokie ceny nieruchomości, usług oraz innych podstawowych produktów. Z kolei w mniejszych miastach, gdzie koszt życia jest niższy, pensje są również mniejsze, co wynika z mniejszego zapotrzebowania na wysoce wykwalifikowanych pracowników oraz niższego kosztu utrzymania.
+
+W Chinach ceny nieruchomości w Pekinie należą do najwyższych na świecie, a ich wzrost jest jednym z największych na rynku nieruchomości. Metr kwadratowy w centrum stolicy jest droższy o około 400% w porównaniu do innych miast. Poza centrum różnica wynosi około 367%. Wzrost cen nieruchomości jest wynikiem intensywnej urbanizacji, której Pekin stał się centrum, oraz silnego popytu na prestiżowe lokalizacje. Wysokie ceny nieruchomości w stolicy są także wynikiem ograniczonej podaży gruntów w centrum, w połączeniu z rosnącym popytem ze strony inwestorów oraz ludności migrującej z innych regionów, poszukującej lepszego życia. Równocześnie urbanizacja w innych częściach Chin nie prowadzi do takich skoków cenowych, szczególnie w miastach środkowych i zachodnich, gdzie dostęp do gruntów jest bardziej obfity.
+
+Chiny intensywnie się urbanizują, a wskaźnik urbanizacji w Chinach wyniósł pod koniec 2023 r. 66,2%., a do 2035 r. ma osiągnąć 75–80%., przewyższając średnią światową. Jest to kraj o ogromnym potencjale gospodarczym, a różnice w cenach między stolicą a innymi miastami wynikają z wielu złożonych procesów, takich jak szybka urbanizacja, zmiany demograficzne, koncentracja sektora usługowego, dynamiczny rozwój rynku nieruchomości, a także różnice w poziomie życia w poszczególnych regionach. Pekin, wraz z innymi wielkimi miastami, ma na celu stworzenie wielkich aglomeracji miejskich, które staną się motorem napędowym gospodarki cyfrowej i technologicznej. Władze chińskie, dążąc do rozwoju megamiast, koncentrują się na tworzeniu infrastruktury "smart" (inteligentnych miast), w tym nowoczesnych systemów transportowych i energetycznych, które mogą wspierać szybki rozwój gospodarki i przemysłu. Megamiasta, w tym Pekin, odpowiadają za ogromną część PKB Chin, a rozwój infrastruktury i cyfryzacja mogą przyczynić się do dalszego wzrostu. Z jednej strony, to centra technologiczne i innowacyjne, które mogą rywalizować z Zachodem, z drugiej strony, w miastach tych widoczna jest także rosnąca przepaść między bogatymi a biednymi regionami.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+colnames(Tabela_o_ile_procent) <- sub("produkt_", "", colnames(Tabela_o_ile_procent))
+
+# Wybór wiersza dla Chin
+tabelka_chiny <- Tabela_o_ile_procent[Tabela_o_ile_procent$Panstwo == "China", -1]
+
+tabelka_chiny_long <- data.frame(
+  Produkt = names(tabelka_chiny),
+  Wartosc = as.numeric(tabelka_chiny)
+)
+
+ggplot(tabelka_chiny_long, aes(x = Produkt, y = Wartosc)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    title = "Różnica w cenach produktów i usług w stolicy \nw porównaniu do innych miast (w %) dla Chin (Rys. 3)",
+    x = "Produkty",
+    y = "Procenty (%)"
+  ) +
+  geom_text(aes(label = round(Wartosc,2)), vjust = -0.5, size = 5) +  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+    axis.text.y = element_text(size = 16),                        
+    axis.title.x = element_text(size = 20),                       
+    axis.title.y = element_text(size = 20),                       
+    plot.title = element_text(hjust = 0.5, size = 24))
+```
+
+#### Kanada - państwo (spośród analizowanych), dla którego dysproporcja między cenami w stolicy a pozostałymi miastami jest najmniejsza
+
+Bardzo ciekawym przypadkiem okazała sie Kanada. Analizując różnice w cenach pomiędzy Ottawą a innymi miastami (Rys. 4), zauważamy, że choć Ottawa, jako stolica, jest jednym z ważniejszych ośrodków kraju, jej ceny nie wykazują tak dużych dysproporcji w porównaniu do reszty państwa, jak ma to miejsce w przypadku innych stolic na świecie. Zdecydowana większość analizowanych produktów i usług wskazuje na stosunkowo niewielkie różnice cenowe.
+
+Pierwszym interesującym spostrzeżeniem jest fakt, że produkty spożywcze w Ottawie są tańsze niż w innych miastach Kanady, co stanowi wyjątek w porównaniu do większości stolic. W przypadku tej kategorii, różnice cenowe są rzędu kilkunastu procent na korzyść stolicy. Kanada, jako kraj o rozległych terenach rolniczych, ma dobrze rozwinięty sektor rolnictwa, co pozwala na zapewnienie dostaw świeżych produktów na rynek lokalny w relatywnie niskiej cenie. Ottawa, leżąca w bliskim sąsiedztwie terenów wiejskich, może korzystać z bezpośredniego dostępu do regionalnych producentów żywności. Skrócenie łańcucha dostaw w przypadku produktów świeżych, takich jak warzywa czy mięso, obniża koszty, co przekłada się na atrakcyjne ceny dla konsumentów. Ottawa znana jest także z licznych targowisk, takich jak ByWard Market, które oferują lokalne produkty w korzystnych cenach. Takie miejsca wspierają lokalnych producentów i jednocześnie umożliwiają mieszkańcom zakup produktów wysokiej jakości w atrakcyjnych cenach, co jest rzadkością w stolicach o podobnej wielkości i statusie. Dodatkowo, rynek jest na tyle konkurencyjny, że ceny pozostają niższe niż w mnieszych miastach. Duże sieci handlowe obecne w Ottawie, takie jak Loblaws, Walmart czy Metro, mają możliwość negocjowania korzystnych cen u dostawców dzięki swojej skali działania.
+
+Ceny usług w Ottawie, takich jak internet czy posiłki w restauracjach, są w zasadzie zbliżone do mediany wartości w reszcie kraju. Zaledwie niewielkie różnice, takie jak Internet tańszy o około 2% i posiłek droższy o 3%, wskazują, że Ottawa nie odbiega w sposób znaczący od innych miast pod względem kosztów życia. Jedynie cena cappuccina w kawiarni, która jest droższa o około 10%, może wynikać z faktu, że stolica, jako miejsce z większą liczbą turystów i instytucji rządowych, ma wyższy popyt na tego typu usługi.\
+Wyjątkową różnicą jest natomiast koszt biletu miesięcznego na komunikację publiczną, który w Ottawie jest o około 45% droższy niż w innych miastach. Ta wysoka różnica może być wynikiem wyższych kosztów utrzymania infrastruktury transportowej w stolicy, która jest bardziej rozbudowana i intensywniejsza w użytkowaniu. Warto jednak podkreślić, że wysoka cena biletu miesięcznego daje pasażerom dostęp do kompleksowej sieci transportowej. System komunikacji często integruje różne środki transportu – metro, autobusy i tramwaje – umożliwiając wygodne przesiadki w ramach jednego biletu. Takie rozwiązanie ułatwia mieszkańcom poruszanie się po mieście i zwiększa efektywność korzystania z transportu publicznego. Ponadto, przystanki w Ottawie są nowoczesne, a stałe przeznaczanie środków na dostosowanie stacji metra do standardów dostępności pokazuje zaangażowanie miasta w zapewnienie usług na najwyższym poziomie, mimo iż jest to proces trudny technicznie, czasochłonny i kosztowny. Warto również zauważyć, że chociaż komunikacja publiczna jest rozwinięta, aż 83% Kanadyjczyków posiada samochód, a 81% z nich uważa, że życie bez auta jest w Kanadzie niemożliwe. W innych krajach ten odsetek jest znacznie niższy. Może to być jednym z powodów, dla których Ottawa, mimo inwestycji w infrastrukturę transportu publicznego, utrzymuje stosunkowo wysoki koszt biletów – transport publiczny musi konkurować z dominującym użyciem samochodów, co wpływa na strukturę finansowania i rozkład kosztów.
+
+Ceny paliwa są natomiast bardzo zbliżone w całym kraju, co może wynikać z jednolitych regulacji i centralnego systemu dystrybucji paliw w Kanadzie, a także niewielkich różnic w kosztach transportu.
+
+Warto także zauważyć, że średnia wypłata w Ottawie jest wyższa o około 9% niż w reszcie Kanady. Jest to naturalna konsekwencja obecności w stolicy wielu instytucji rządowych, międzynarodowych organizacji i firm, które oferują wyższe wynagrodzenia w sektorach publicznych oraz profesjonalnych. Mimo to, różnice w wynagrodzeniach w Ottawie nie są tak duże, jak w przypadku innych stolic, gdzie stawki są znacznie wyższe z powodu intensywnego rozwoju sektora technologicznego, finansowego i biznesowego.
+
+Ceny nieruchomości w Ottawie są wyższe niż w reszcie kraju, ale różnice te są stosunkowo niewielkie. Metr kwadratowy w centrum stolicy kosztuje około 7% więcej, a poza centrum – około 9% więcej. W porównaniu do innych dużych metropolii Kanady, takich jak Toronto czy Vancouver, gdzie ceny nieruchomości osiągają rekordowe poziomy, rynek w Ottawie jest bardziej zrównoważony i stabilny. Ottawa pełni funkcję przede wszystkim administracyjną, co oznacza, że nie przyciąga tak dużych rzesz ludzi, jak centra biznesowe pokroju Toronto czy technologiczne, jak Vancouver. Miasto, choć ważne, nie jest równie dużym magnesem dla migrantów z innych prowincji czy inwestorów zagranicznych. W efekcie popyt na nieruchomości nie osiąga poziomów obserwowanych w największych kanadyjskich metropoliach. Ottawa, mimo swojego statusu stolicy, charakteryzuje się stosunkowo umiarkowanym zagęszczeniem ludności. To oznacza, że presja na zabudowę nowych terenów czy zwiększanie cen mieszkań jest mniejsza niż w gęsto zaludnionych miastach. Równocześnie dostępność przestrzeni na przedmieściach pozwala na utrzymanie konkurencyjnych cen w stosunku do innych miast. Różnica w cenach między centrum a obszarami poza centrum, choć zauważalna (7% w centrum, 9% poza nim), jest raczej niewielka. Może to wynikać z dobrej infrastruktury transportowej, która łączy różne części miasta. Dostępność wygodnych połączeń autobusowych, tramwajowych i rowerowych sprawia, że mieszkanie na przedmieściach wciąż jest wygodne, co zmniejsza presję na nieruchomości w samym centrum. W porównaniu z sytuacją w innych stolicach na świecie Ottawa wypada bardzo korzystnie. W wielu stolicach ceny nieruchomości są zdecydowanie wyższe niż w pozostałych częściach kraju, a różnice te osiągają nawet kilkaset procent.
+
+Ottawa wykazuje mniejsze rozbieżności cenowe w porównaniu do innych kanadyjskich miast, szczególnie w kontekście kosztów życia, takich jak produkty spożywcze, usługi czy paliwa. Mimo to, wyższe koszty komunikacji publicznej oraz niewielka różnica w cenach nieruchomości w centrum miasta wskazują na specyficzne uwarunkowania związane z funkcjonowaniem stolicy, gdzie popyt na usługi publiczne i przestrzeń mieszkaniową jest większy, ale wciąż w granicach rozsądku w porównaniu z innymi miastami.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+# Wybór wiersza dla Kanady
+tabelka_kanada <- Tabela_o_ile_procent[Tabela_o_ile_procent$Panstwo == "Canada", -1]  
+
+tabelka_kanada_long <- data.frame(
+  Produkt = names(tabelka_kanada),
+  Wartosc = as.numeric(tabelka_kanada)
+)
+
+ggplot(tabelka_kanada_long, aes(x = Produkt, y = Wartosc)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    title = "Różnica w cenach produktów i usług w stolicy \nw porównaniu do innych miast (w %) dla Kanady (Rys. 4)",
+    x = "Produkty",
+    y = "Procenty (%)"
+  ) +
+  geom_text(aes(label = round(Wartosc,2)), 
+            vjust = ifelse(tabelka_kanada_long$Wartosc >= 0, -0.5, 1.5),
+            size = 5) +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1, size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 24))
+```
+
+#### Podsumowanie podpunktu 1
+
+Różnice w cenach pomiędzy stolicami a pozostałymi miastami są wyraźnie zauważalne w większości krajów, a ich analiza pokazuje złożoność czynników gospodarczych, społecznych i urbanistycznych. Porównując różne segmenty, takie jak produkty spożywcze, usługi, paliwo, nieruchomości oraz średnie wynagrodzenia, można dostrzec znaczące dysproporcje, których przyczyny bywają zróżnicowane.
+
+Produkty spożywcze w stolicach są droższe średnio o kilkanaście procent niż w innych miastach. Wysokie ceny wynikają z bardziej złożonych łańcuchów dostaw i wyższych kosztów operacyjnych, takich jak wynajem powierzchni handlowych. Dodatkowo, w stolicach większy udział w rynku mają drożsi, zagraniczni dostawcy. Mniejsze miasta natomiast korzystają z obecności lokalnych producentów, co pozwala na obniżenie kosztów dzięki krótszemu łańcuchowi dostaw. W stolicach popyt na produkty luksusowe dodatkowo podnosi ceny. W Chinach, szczególnie w Pekinie, produkty spożywcze są droższe nawet o kilkadziesiąt procent w porównaniu do innych miast, co wynika z konieczności importu dużej ilości żywności oraz większego zapotrzebowania na towary.
+
+Ceny usług w stolicach przewyższają te w innych miastach o kilkadziesiąt procent. Wyższe koszty prowadzenia działalności, takie jak wynagrodzenia pracowników i czynsze, oraz większy popyt na usługi wysokiej jakości są głównymi przyczynami tego zjawiska. W stolicach, takich jak Pekin, restauracje czy transport publiczny są znacznie droższe, np. miesięczny bilet komunikacyjny jest tam droższy o 176%. W Kanadzie natomiast Ottawa prezentuje inny trend – ceny usług są zbliżone do średnich krajowych, z wyjątkiem komunikacji publicznej, gdzie koszt biletu jest o 45% wyższy niż w innych miastach, co wynika z intensywniejszego użytkowania i większej rozbudowy infrastruktury.
+
+Ceny paliwa pozostają względnie jednolite na terenie większości krajów, niezależnie od lokalizacji. Stabilność ta jest efektem regulacji państwowych oraz równego dostępu do infrastruktury dystrybucyjnej. W Chinach, gdzie rynek paliwowy jest silnie kontrolowany przez rząd, nie występują istotne różnice cen paliwa pomiędzy Pekinem a innymi miastami, co zapobiega napięciom społecznym. Podobnie w innych krajach, ujednolicone ceny paliwa są standardem, zapewniającym równowagę na rynku.
+
+Największe różnice w cenach występują w przypadku nieruchomości. W stolicach średnia cena metra kwadratowego w centrum jest nawet o 200% wyższa niż w innych miastach, a poza centrum różnice sięgają około 140%. W Pekinie nieruchomości w centrum są droższe o 400%, a poza centrum o 367% w porównaniu z innymi miastami. Przyczynami są ograniczona podaż gruntów, intensywna urbanizacja oraz wysoki popyt ze strony ludności i inwestorów. Stolicy towarzyszy prestiż lokalizacji oraz dostępność infrastruktury, co dodatkowo podbija ceny. W Kanadzie sytuacja jest mniej dramatyczna – Ottawa, mimo statusu stolicy, nie wykazuje tak dużych dysproporcji cenowych, co może być efektem bardziej zrównoważonego rynku nieruchomości i większej dostępności gruntów.
+
+Średnie wynagrodzenia w stolicach są wyraźnie wyższe niż w innych miastach. Różnica wynosi około 54% na korzyść stolic, a w Chinach średnia wypłata w Pekinie jest aż o 97% wyższa. Jest to związane z koncentracją kluczowych sektorów gospodarki, takich jak technologie, finanse czy administracja, oraz koniecznością dostosowania płac do wyższych kosztów życia. Wysokie wynagrodzenia są także odpowiedzią na zapotrzebowanie na wysoce wykwalifikowanych specjalistów.
+
+Chiny stanowią interesujący przypadek, gdzie różnice pomiędzy stolicą a innymi miastami są wyjątkowo widoczne. Pekin, jako centrum gospodarcze, kulturowe i polityczne, przyciąga inwestorów i migrantów z całego kraju, co powoduje gwałtowny wzrost cen we wszystkich analizowanych kategoriach. Urbanizacja, która w Chinach postępuje w szybkim tempie (wskaźnik urbanizacji w 2023 r. wyniósł 66,2%), prowadzi do dalszego zwiększania dysproporcji między stolicą a resztą kraju.
+
+Z kolei Kanada, reprezentowana w analizie przez Ottawę, jest przykładem relatywnie niewielkich różnic między stolicą a innymi miastami. Ottawa korzysta z bezpośredniego dostępu do lokalnych producentów żywności, co czyni produkty spożywcze tańszymi niż w innych miastach. Ceny usług w stolicy są zbliżone do średnich krajowych, co odzwierciedla stabilność rynku. Nawet w przypadku nieruchomości Ottawa nie wykazuje drastycznych różnic cenowych, co kontrastuje z sytuacją w innych analizowanych krajach.
+
+Różnice cenowe pomiędzy stolicami a innymi miastami zależą od wielu czynników, takich jak koszty operacyjne, struktura rynku, dostępność lokalnych dostawców czy polityka gospodarcza państwa. Chiny reprezentują przypadek dynamicznych i intensywnych różnic, podczas gdy Kanada wyróżnia się większą równowagą i umiarkowaniem w tym zakresie. W obu przypadkach analizowane zjawiska odzwierciedlają unikalne procesy gospodarcze i społeczne zachodzące w tych krajach.
+
+### Podpunkt 2
+
+Po przeanalizowaniu danych dotyczących różnic w cenach pomiędzy stolicami różnych państw a resztą ich miast, warto przenieść uwagę na inny problem – jak spośród miast w jednym kraju wybrać najlepsze miejsce do zamieszkania? Ważną rolę odgrywają tutaj ceny produktów, wysokość opłat za mieszkanie, ceny m\^2 nieruchomości oraz średnia wypłata. Wszystko to razem przekłada się na poziom życia i zamożność mieszkańców oraz może zachęcić (lub zniechęcić) osoby do wybierania danego miasta na swój nowy dom. Aby przeanalizować tą kwestię, wybierzemy jedno państwo, które zbadamy pod tym kątem, a będzie to Polska (67 miast).
+
+Na samym początku musimy się przekonać, które czynniki należy wziąć pod uwagę, podejmując decyzję o wyborze miasta. W tym celu przedstawimy na boxplotach ceny z całego kraju dla każdego badanego artykułu. Na ich podstawie będziemy w stanie określić, dla których produktów występują znaczące różnice w cenach w skali całego państwa, a dla których ceny znajdują się w całej Polsce na podobnym poziomie. To właśnie produkty o zróżnicowanych cenach będą czynnikami wpływającymi na ostateczny wybór. Aby ułatwić porównanie, podzielimy poszczególne produkty na 3 kategorie. Pierwszą z kategorii będą artykuły spożywcze oraz paliwo, drugą kategorią będą opłaty, a trzecią - ceny za 1 m\^2 nieruchomości w centrum miasta i poza nim oraz średnia miesięczna wypłata. Wyniki przedstawione są na poniższych wykresach.
+
+```{r}
+#| echo: false
+#| warning: false
+
+# przefiltrowanie miast, aby otrzymać tylko te z Polski
+Poland_values <- dane_wybrane |>
+  filter(Panstwo=="Poland") |>
+  as.data.frame()
+
+# Podział na ceny artykułów spożywczych, mieszkań i opłat
+Poland_food_prices <- Poland_values[, c("produkt_cappuccino","produkt_chleb_500g","produkt_filet_kurczak_1kg","produkt_banany_1kg","produkt_ziemniaki_1kg","produkt_butelka wody_1,5l","produkt_paliwo_1l")]
+colnames(Poland_food_prices) <- sub("produkt_", "", colnames(Poland_food_prices))
+Poland_apartment_prices <- Poland_values[, c("produkt_cena_za_m_centrum","produkt_cena_za_m_poza_centrum", "produkt_średnia_miesięczna_wypłata")]
+colnames(Poland_apartment_prices) <- sub("produkt_", "", colnames(Poland_apartment_prices))
+Poland_monthly_payments <- Poland_values[, c("produkt_bilet_miesięczny_MPK", "produkt_rachunki_za_85_metrowe_mieszkanie","produkt_internet", "produkt_posiłek_dla_2osób")]
+colnames(Poland_monthly_payments) <- sub("produkt_", "", colnames(Poland_monthly_payments))
+
+# zastosowanie funkcji pivot_longer w celu ułatwienia tworzenia boxplotów
+Poland_food_prices_with_pivot_longer <- Poland_food_prices %>%
+  pivot_longer(cols = everything(), names_to = "Zmienne", values_to = "Wartości")
+
+Poland_apartment_prices_with_pivot_longer <- Poland_apartment_prices %>%
+  pivot_longer(cols = everything(), names_to = "Zmienne", values_to = "Wartości")
+
+Poland_monthly_payments_with_pivot_longer <- Poland_monthly_payments %>%
+  pivot_longer(cols = everything(), names_to = "Zmienne", values_to = "Wartości")
+```
+
+Na rys. 5 widzimy boxploty cen podstawowych produktów spożywczych oraz jednego litra paliwa. Z wykresów wynika, że ich wartości nie różnią się znacząco. Różnica między trzecim a pierwszym kwartylem w przypadku każdego produktu wynosi najczęściej do kilkudziesięciu centów. Nie są to różnice, które miałyby duży wpływ na wybór najlepszego miasta do życia, dlatego nie bierzemy tych czynników pod uwagę w dalszej części podpunktu, przy ostatecznej decyzji. Na uwagę zasługuje fakt, że ceny 1 l paliwa oraz 1,5 l wody mineralnej w supermarkecie są niemalże takie same w całym kraju. W przypadku wody mineralnej może być to spowodowane faktem, że jest ona jednym z najbardziej podstawowych produktów potrzebnych na co dzień, jest zatem ogólnodostępna. W przypadku paliwa wnioski są podobne do poprzedniego podpunktu – stabilność cen wynika z charakteru rynku paliwowego, często regulowanego przez państwo.
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 14
+
+# stworzenie boxplotu dla cen artykułów spożywczych i paliwa
+ggplot(Poland_food_prices_with_pivot_longer, aes(x = Zmienne, y = Wartości)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(title = "Ceny wybranych produktów spożywczych (Rys. 5)", x = "Produkty", y = "Cena") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 26))
+```
+
+Na rys. 6 znajdują się boxploty cen nieruchomości oraz średniej wypłaty. Z wykresu można odczytać, że znacznymi rozbieżnościami cechują się ceny za 1 m\^2 w centrach miast oraz poza nimi. Jest to spowodowane charakterem każdego miasta – w naszym zestawieniu znajdują się zarówno duże miasta o znaczeniu ogólnokrajowym i wojewódzkim, gdzie ceny za 1 m\^2 są wyższe z uwagi na większą liczbę osób chcących tam zamieszkać i bliskość infrastruktury, ale także wyższe koszty budowy i ograniczoną podaż, jak i małe miasta, gdzie popyt na nieruchomości jest znacznie niższy, ale lokalizacja w sąsiedztwie miejsc takich jak szkoły, szpitale i sklepy jest wciąż bardzo ważna. Mniejszymi rozbieżnościami charakteryzują się średnie płace. Może być to spowodowane faktem, że w każdym mieście można spotkać osoby wykonujące zawody, dla których wypłata jest odgórnie ustalona w całym kraju (dotyczy to głównie sektora opieki zdrowotnej, edukacyjnego oraz administracji). Również w przypadku wielu firm, działających w więcej niż jednej lokalizacji, wysokość płac jest często ujednolicana – pracownicy w jednym z zakładów otrzymują takie same pensje jak pracownicy w drugim zakładzie. Występują tutaj wartości odstające, ale dane takie pochodzą z większych miast – Warszawy, Wrocławia, Krakowa – gdzie ma swoje siedziby wiele firm z branży IT, finansów oraz sektora nowoczesnych usług, w których zarobki są na ogół wysokie, przez co rośnie również wysokość średniej pensji dla danego miasta.
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 14
+
+# stworzenie boxplotu dla cen nieruchomości i średniej wypłaty
+ggplot(Poland_apartment_prices_with_pivot_longer, aes(x = Zmienne, y = Wartości)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(title = "Ceny nieruchomości oraz średnia wypłata (Rys. 6)", x = "Ceny za metr kwadratowy i średnia pensja", y = "Cena") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 26))
+```
+
+Na rys. 7 widzimy porównanie średnich cen biletu miesięcznego, Internetu, posiłku w restauracji dla 2 osób oraz średnich miesięcznych kosztów utrzymania 85 m\^2 mieszkania. Można zauważyć, że opłaty za Internet mają podobny poziom w całym kraju, podobnie jak cena biletu miesięcznego oraz posiłku w restauracji. Ich wysokość ma związek z kosztami utrzymania infrastruktury, w przypadku restauracji podczas ustalania cen należy wliczyć koszt dostarczenia świeżych składników, utrzymania lokalu oraz wynagrodzenia dla pracowników. Największym zróżnicowaniem cechują się koszty utrzymania 85 m\^2 mieszkania. Na takie koszty składają się ceny energii elektrycznej, gazu, wody, ogrzewania, jak również opłaty za wywóz śmieci oraz podatek od nieruchomości. Ceny energii elektrycznej oraz gazu są w Polsce regulowane, ale mogą istnieć rozbieżności związane z taryfami lokalnych operatorów. Opłaty za wywóz śmieci oraz wysokość podatku od nieruchomości są regulowane przez gminy, zatem mają różne wysokości w zależności od miejsca.
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 14
+
+# stworzenie boxplotu dla opłat
+ggplot(Poland_monthly_payments_with_pivot_longer, aes(x = Zmienne, y = Wartości)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(title = "Opłaty (Rys. 7)", x="Opłaty", y = "Cena") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 26))
+```
+
+Na podstawie wszystkich 3 wykresów możemy ustalić, że czynnikami, które mają największe znaczenie dla kosztów życia w danym miejscu, są: ceny za 1 m\^2 nieruchomości w centrum miasta i poza nim, średnia wypłata oraz koszty utrzymania 85 m\^2 mieszkania. Właśnie te czynniki będziemy brali pod uwagę przy wyborze najlepszego miejsca do życia w Polsce. Jeżeli dla pewnego miasta w kolumnie z jednym ze wspomnianych czynników brakuje danych, takie miasto nie jest brane pod uwagę przy wyliczaniu statystyk i w konsekwencji nie może być rozważane przy ostatecznym wyborze.
+
+Aby odnieść poziom cen za 1 m\^2 nieruchomości w centrum miasta i poza nim do średniej miesięcznej wypłaty, sprawdzimy, ile wynosi stosunek tych wielkości. W ten sposób policzymy, ile potrzeba przeznaczyć miesięcznych wypłat, aby móc kupić 1 m\^2 powierzchni nieruchomości. Następnie wybierzemy po 10 miast, dla których stosunek cen za 1 m\^2 nieruchomości w centrum miasta do średniej miesięcznej wypłaty oraz stosunek cen za 1 m\^2 nieruchomości poza centrum miasta do średniej miesięcznej wypłaty są najmniejsze. Oznacza to, że w tych miastach najszybciej możemy zebrać oszczędności na zakup mieszkania.
+
+Wyniki opisanej procedury widoczne są w tabeli 1. Można z niej odczytać, że najmniejsza ilość wypłat, jakie trzeba przeznaczyć na 1 m\^2 nieruchomości w centrum miasta, wynosi 0.94 i jest to wartość dla Prudnika. Tuż za nim znajduje się Konin, gdzie aby kupić 1 m\^2 nieruchomości w centrum miasta trzeba przeznaczyć 1.31 średniej miesięcznej wypłaty. Wśród miast o najmniejszej ilości wypłat, jakie trzeba przeznaczyć na 1 m\^2 nieruchomości w centrum miasta, znajdują się także: Bytom, Łomża, Świdnica, Częstochowa, Elbląg, Rawa Mazowiecka, Koszalin oraz Tychy. Dla ostatnich w tym zestawieniu Tych wartość wynosi 1.87, co oznacza, że na 1 m\^2 nieruchomości w centrum wydamy nieco mniej niż 2 średnie miesięczne wypłaty.
+
+Analizując wartości w tabeli 1. dla ilości wypłat, które należy przeznaczyć na zakup 1 m\^2 nieruchomości poza centrum miasta, widzimy że tym razem na pierwszym miejscu ponownie znajduje się Prudnik z wynikiem 0.86. Tuż za nim znajdziemy Częstochowę z wartością 1.28. W tabeli zostały wyróżnione także Łomża, Konin, Bytom, Koszalin, Tarnowskie Góry, Wałbrzych, Rawa Mazowiecka oraz Katowice. Dla ostatnich w zestawieniu Katowic wartość wyniosła 1.61. Warto zauważyć, że Katowice są jedynym miastem wojewódzkim, które znalazło się w tabeli 1. Przyczyną może być fakt, że przy zbliżonych średnich pensjach w większości miejsc w Polsce, w mniejszych miastach ceny nieruchomości są na ogół niższe, gdyż popyt na nieruchomości jest mniejszy.
+
+\pagebreak
+
+## Tabela miast, gdzie jest najniższy stosunek ceny za 1 metr kwadratowy nieruchomości w centrum i poza nim do wypłaty (Tabela 1) {.center}
+
+```{r}
+#| echo: false
+# Obliczanie, ile razy średnia wypłata mieści się w cenie za metr w centrum
+Poland_values <- Poland_values %>%
+  mutate(
+    wyplaty_na_metr_centrum = produkt_cena_za_m_centrum / produkt_średnia_miesięczna_wypłata,
+    wyplaty_na_metr_poza_centrum = produkt_cena_za_m_poza_centrum / produkt_średnia_miesięczna_wypłata
+  )
+
+# Wybranie 10 miast z najniższą liczbą wypłat w centrum
+najlepsze_centrum <- Poland_values %>%
+  arrange(wyplaty_na_metr_centrum) %>%
+  select(Miasto, wyplaty_na_metr_centrum) %>%
+  head(10)
+
+# Wybranie 10 miast z najniższą liczbą wypłat poza centrum
+najlepsze_poza_centrum <- Poland_values %>%
+  arrange(wyplaty_na_metr_poza_centrum) %>%
+  select(Miasto, wyplaty_na_metr_poza_centrum) %>%
+  head(10)
+
+# Stworzenie tabeli
+wynikowa_tabela <- data.frame(
+  "Miasto" = najlepsze_centrum$Miasto,
+  "Ilość_wypłat_centrum" = round(najlepsze_centrum$wyplaty_na_metr_centrum,2),
+  "Miasto_" = najlepsze_poza_centrum$Miasto,
+  "Ilość_wypłat_poza_centrum" = round(najlepsze_poza_centrum$wyplaty_na_metr_poza_centrum,2)
+)
+
+flextable(wynikowa_tabela) %>%
+  set_caption("Tabela miast, gdzie jest najniższy stosunek \nwypłaty do ceny za 1 metr kwadratowy nieruchomości w centrum i poza nim (Tabela 1)") %>%
+  fontsize(size = 10) %>%
+  fontsize(size = 10, part = "header") %>%
+  width(j = 1:4, width = 2) %>%
+  align(j = c(2, 4), align = "center", part = "all") %>%  
+  align(j = 3, align = "left", part = "all") 
+
+
+```
+
+\newpage
+
+Następnie sprawdzimy, jak będą wyglądały wyniki, jeżeli uśrednimy cenę za 1 m\^2 w centrum miasta i poza nim. W tym celu tworzymy nową kolumnę ramki danych, w której dla każdego miasta umieścimy wspomnianą średnią, a następnie postępujemy tak samo, jak w poprzednim przypadku – obliczamy stosunek średniej ceny za 1 m\^2 nieruchomości do średniej miesięcznej wypłaty i wybieramy 10 miast, dla których wartość ta jest najmniejsza. Wyniki widoczne są w tabeli 2.
+
+Patrząc na wyniki w tabeli 2, możemy zauważyć, że powtarzają się w niej te same miasta, co w tabeli 1. Są to, licząc od pierwszego miejsca: Prudnik z wartością 0.90, Konin z wartością 1.37, Częstochowa, Łomża, Bytom, Świdnica, Koszalin, Rawa Mazowiecka, Elbląg oraz Tychy. Dla ostatnich w tabeli Tych stosunek ma wartość 1.78. Lista miast w tym przypadku zgadza się z intuicją – jeżeli stosunek ceny za 1 m\^2 w centrum do średniej płacy oraz stosunek ceny za 1 m\^2 poza centrum do średniej płacy mają jedne z najniższych wartości w Polsce, to również stosunek średniej cen za 1 m\^2 nieruchomości do średniej płacy będzie wśród najniższych w kraju.
+
+\pagebreak
+
+## Tabela miast, gdzie jest najniższy stosunek średniej ceny za 1 metr kwadratowy nieruchomości do wypłaty - uśredniona cena w centrum i poza nim (Tabela 2) {.center}
+
+```{r}
+#| echo: false
+
+# Uśrednienie ceny za metr w centrum i poza centrum
+Poland_values <- Poland_values %>%
+  mutate(
+    srednia_cena_metr = (produkt_cena_za_m_centrum + produkt_cena_za_m_poza_centrum) / 2
+  )
+
+# Obliczanie liczby wypłat potrzebnych na uśrednioną cenę za metr
+Poland_values <- Poland_values %>%
+  mutate(
+    wyplaty_na_srednia_cene_metr = srednia_cena_metr / produkt_średnia_miesięczna_wypłata
+  )
+
+# Posortowanie według liczby wypłat na uśrednioną cenę i wybranie 10 miast z najmniejszą liczbą wypłat
+najmniejsze_wartosci <- Poland_values %>%
+  arrange(wyplaty_na_srednia_cene_metr) %>%
+  select(Miasto, srednia_cena_metr, wyplaty_na_srednia_cene_metr) %>%
+  head(10)
+
+# Stworzenie tabeli wynikowej 
+wynikowa_tabela_naj <- data.frame(
+  "Miasto_z_najlepszym_stosunkiem_do_ceny_średniej" = najmniejsze_wartosci$Miasto,
+  "Ilość_wypłat_dla_średniej_ceny" = round(najmniejsze_wartosci$wyplaty_na_srednia_cene_metr,2)
+)
+
+flextable(wynikowa_tabela_naj) %>%
+  set_caption("Tabela miast, gdzie jest najniższy stosunek \nwypłaty do średniej ceny za 1 metr kwadratowy nieruchomości (Tabela 2)") %>%
+  fontsize(size = 11) %>%  
+  width(j = 1:2, width = 4) %>%
+  align(j = 2, align = "center", part = "all")
+```
+
+\newpage
+
+Przy wyborze najlepszego miasta do życia w Polsce weźmiemy pod uwagę jeszcze jeden czynnik – miesięczne koszty utrzymania 85 m\^2 mieszkania. W tym przypadku policzymy, ile procent średniej miesięcznej pensji pochłaniają koszty utrzymania mieszkania. Do kosztów utrzymania doliczymy również cenę Internetu, ponieważ w większości gospodarstw domowych jest to stały wydatek, opłacany co miesiąc. Następnie wybierzemy wśród wszystkich miast 10, dla których procent średniej miesięcznej pensji odkładany na opłaty jest najmniejszy. Wyniki znajdują się w tabeli 3.
+
+Z tabeli możemy odczytać, że najmniejszy udział procentowy kosztów utrzymania mieszkania wynosi 9,44% i jest on wartością dla Będzina – miasta położonego w województwie śląskim, na terenie Górnośląskiego Okręgu Przemysłowego. W mieście rozwija się przemysł hutniczy, energetyczny, spożywczy oraz materiałów budowlanych, a do niedawna także górniczy. Dzięki obecności dużych zakładów przemysłowych oraz przedsiębiorstw państwowych, średnia pensja jest wyższa niż w wielu innych miastach Polski, ujętych w naszych danych. Niskie koszty utrzymania mieszkania przy wyższej średniej płacy powodują, że stosunek procentowy comiesięcznych opłat do średniej pensji jest niewielki w porównaniu z innymi miastami kraju i gwarantuje Będzinowi pierwsze miejsce w tabeli. Na drugim miejscu znalazła się Rawa Mazowiecka z wynikiem 11,20%, za nią Jelenia Góra, Łomża, Grodzisk Mazowiecki, Poznań, Warszawa, Kielce oraz Szczecin. Zestawienie zamyka Świdnica z wynikiem 18,26%. Oznacza to, że w większości miast kraju na comiesięczne opłaty przeznaczyć trzeba co najmniej 1/5 miesięcznej pensji.
+
+\pagebreak
+
+## Tabela miast, gdzie jest najniższy stosunek procentowy ceny opłat do średniej wypłaty (Tabela 3) {.center}
+
+```{r}
+#| echo: false
+
+# obliczenie stosunku procentowego cen rachunków do średniej wypłaty i wybranie 10 miast, dla których wartość jest najniższa 
+Poland_values$procent_oplat <- ((Poland_values$produkt_rachunki_za_85_metrowe_mieszkanie + Poland_values$produkt_internet)/Poland_values$produkt_średnia_miesięczna_wypłata)*100
+procent_oplat_wedlug_miasta <- Poland_values[, c("Miasto", "procent_oplat")]
+procent_oplat_posortowany <- procent_oplat_wedlug_miasta[order(procent_oplat_wedlug_miasta$procent_oplat),] |>
+  head(10)
+
+# Stworzenie tabeli wynikowej 
+wynikowa_tabela_oplat <- data.frame(
+  "Miasto" = procent_oplat_posortowany$Miasto,
+  "Stosunek_procentowy_ceny_opłat_do_średniej_wypłaty" = round(procent_oplat_posortowany$procent_oplat,2)
+)
+
+flextable(wynikowa_tabela_oplat) %>%
+  set_caption("Tabela miast, gdzie jest najniższy stosunek procentowy ceny opłat do średniej wypłaty (Tabela 3)") %>%
+  fontsize(size = 11) %>%  
+  width(j = 1:2, width = 4) %>%
+  align(j = 2, align = "center", part = "all")
+
+```
+
+\newpage
+
+#### Podsumowanie podpunktu 2
+
+Aby znaleźć najlepsze miasto do życia w Polsce, w pierwszej kolejności przeanalizowaliśmy czynniki, które mogą mieć wpływ na wybór miasta. Jako że ceny artykułów spożywczych, paliwa, biletu miesięcznego na komunikację miejską, posiłku w restauracji oraz Internetu nie różnią się znacząco w poszczególnych miastach kraju, należy wziąć pod uwagę ceny 1 m\^2 nieruchomości w centrum i poza nim, średnią pensję oraz koszty utrzymania 85 m\^2 mieszkania, które cechują różnice w zależności od miasta. Aby porównać pozostałe 3 czynniki ze średnią pensją, dodaliśmy do ramki danych 3 kolumny: stosunek ceny 1 m\^2 nieruchomości w centrum miasta do średniej pensji, stosunek ceny 1 m\^2 nieruchomości poza centrum miasta do średniej pensji, udział procentowy kosztów utrzymania 85 m\^2 mieszkania w średniej miesięcznej pensji. Następnie wybraliśmy po 10 miast, które charakteryzowały się najniższymi wartościami wskaźników i przedstawiliśmy wyniki w Tabeli 1 i Tabeli 3. Dodatkowo obliczyliśmy średnią cenę 1 m\^2 nieruchomości w każdym mieście i obliczyliśmy jej stosunek do średniej pensji, a wyniki przedstawiliśmy w Tabeli 2.
+
+Na podstawie tabel możemy wytypować kandydatów do miana najlepszego miasta do życia w Polsce. Według tabeli 1 – stosunku cen 1 m\^2 nieruchomości w centrum do średniej pensji – możemy brać pod uwagę: Prudnik, Konin, Bytom, Łomżę, Świdnicę, Częstochowę, Elbląg, Rawę Mazowiecką, Koszalin oraz Tychy, pod względem stosunku cen 1 m\^2 nieruchomości poza centrum do średniej pensji: Prudnik, Częstochowę, Łomżę, Konin, Bytom, Koszalin, Tarnowskie Góry, Wałbrzych, Rawę Mazowiecką oraz Katowice. Na podstawie tabeli 2, możemy brać pod uwagę Prudnik, Konin, Częstochowę, Łomżę, Bytom, Świdnicę, Koszalin, Rawę Mazowiecką, Elbląg oraz Tychy. Analiza wyników z tabeli 3 pozwala na wyłonienie zupełnie nowych kandydatów do miana najlepszego miasta do życia w Polsce – najmniejszy stosunek opłat za mieszkanie do średniej płacy występuje w Będzinie, Rawie Mazowieckiej, Jeleniej Górze, Łomży, Grodzisku Mazowieckim, Poznaniu, Warszawie, Kielcach, Szczecinie oraz Świdnicy. Za najlepsze miasto do życia w Polsce można uznać miasto, które znajduje się w czołówce we wszystkich rozważanych w tabelach kategoriach. Na tej podstawie można nim uznać Rawę Mazowiecką, Łomżę oraz Świdnicę. Na wyróżnienie zasługuje również Będzin – miasto, w którym średnia płaca jest znacząco wyższa niż w innych miastach kraju z uwagi na położenie w Górnośląskim Okręgu Przemysłowym , gdzie intensywnie rozwija się przemysł hutniczy, energetyczny, spożywczy i materiałów budowlanych, jest więc wiele miejsc pracy. Koszty utrzymania 85 m\^2 mieszkania w Będzinie pochłaniają jedynie 9% miesięcznej pensji, w porównaniu do najczęściej pojawiającego się w skali kraju wskaźnika 20-30%.
+
+### podpunkt 3
+
+#### Stopień zweryfikowania danych przez portal Numbeo
+
+Nasze dane pochodzą z portalu Numbeo. Numbeo to internetowa baza danych, która gromadzi i udostępnia informacje na temat kosztów życia dotyczących różnych miast i krajów na całym świecie. Portal jest szczególnie popularny wśród osób planujących przeprowadzkę, podróże lub inwestycje.
+
+Numbeo zbiera dane za pomocą ankiet wypełnianych przez użytkowników, którzy dzielą się swoimi doświadczeniami i informacjami na temat cen, wynagrodzeń, warunków życia i innych czynników. Portal uwzględnia również jakość zebranych danych, którą oznacza za pomocą wskaźników: 1 – dane zweryfikowane oraz 0 – dane wymagające dalszej weryfikacji. Spójrzmy na wykres (Rys. 8), żeby przekonać się, jak to wygląda w przypadku naszych danych. Wskaźnik wiarygodności zebranych informacji w analizowanej próbce wyniósł 18,7%, co oznacza, że jedynie niewielka część danych została uznana za w pełni zweryfikowaną. Jednak niski wskaźnik wiarygodności w przypadku danych pochodzących z Numbeo niekoniecznie powinien być powodem do zmartwień.
+
+Powody, dla których tak mało miast ma przyznany wskaźnik 1 (dane zweryfikowane), mogą wynikać z kilku czynników. Po pierwsze, niska liczba uczestników ankiety w niektórych miastach może utrudniać zebranie wystarczającej ilości danych, co sprawia, że informacje są mniej wiarygodne. W takich przypadkach Numbeo oznacza dane jako wymagające dalszej weryfikacji, aby upewnić się, że przedstawiają one rzeczywisty obraz sytuacji. Po drugie, nieaktualność danych może wpływać na ich jakość – w miastach, gdzie zmiany cen produktów i usług zachodzą szybko, starsze dane mogą być nieaktualne i wymagać aktualizacji. Ponadto rozbieżności w doświadczeniach użytkowników także mogą prowadzić do przyznania danym wartości 0. Użytkownicy mogą przedstawiać różne ceny w zależności od lokalizacji w mieście, preferencji czy sytuacji życiowej, co skutkuje trudnością w uzyskaniu spójnych, zweryfikowanych informacji. Numbeo również często porównuje dane z różnych źródeł, takich jak raporty rządowe czy międzynarodowe organizacje. Jeśli w danym mieście brakuje takich wiarygodnych i oficjalnych raportów, Numbeo może mieć trudności z pełną weryfikacją zgłoszonych informacji. Jednak dla naszych danych głównym powodem przyznania miastu wartości 0 w kategorii "jakość" jest najprawdopodobniej fakt, że wiele z miejscowości ma podane ceny tylko dla pewnej części produktów. Wszystkie te czynniki razem powodują, że jedynie niewielka część danych może zostać uznana za w pełni zweryfikowaną, co wpływa na niski wskaźnik wiarygodności w analizowanej próbce.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+liczba_jedynki <- sum(data$jakosc == 1)  
+liczba_zero <- sum(data$jakosc == 0)    
+
+# Przygotowujemy dane do wykresu kołowego
+jakosc_table <- c("Dane zweryfikowane" = liczba_jedynki, "Dane niezweryfikowane" = liczba_zero)
+
+# Tworzymy wykres kołowy
+ggplot(data.frame(jakosc = names(jakosc_table), liczba = jakosc_table), 
+       aes(x = "", y = liczba, fill = jakosc)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +  
+  labs(title = "Procentowy udział danych zweryfikowanych \nprzez portal Numbeo (Rys. 8)") +
+  theme_void() +  
+  scale_fill_manual(values = c("lightblue", "lightcoral"),
+                    name = "Jakość danych")+
+  geom_text(aes(label = paste(round(liczba / sum(jakosc_table) * 100, 1), "%")),
+            position = position_stack(vjust = 0.5), size = 8, color = "black") +
+  theme(plot.title = element_text(size = 21, hjust = 0.5),
+    legend.title = element_text(size = 20),  
+    legend.text = element_text(size = 18))
+```
+
+#### 10 państw z największym stosunkiem danych zweryfikowanych
+
+Uznaliśmy, że warto sprawdzić, które kraje mają największy wskaźnik wiarygodności danych, aby lepiej zrozumieć, jak różne czynniki wpływają na jakość zbieranych informacji. Wybraliśmy więc państwa, które w naszych danych zawierały co najmniej 50 miast, aby zapewnić odpowiednią reprezentatywność próby. Z tych państw wyłoniliśmy 10, które charakteryzowały się najwyższym wskaźnikiem zweryfikowanych danych, co możemy zobaczyć na wykresie (Rys. 9).
+
+Pierwsze miejsce z wynikiem bliskim 40% zajmuje Kanada. Wyróżnia się stosunkowo wysoką wiarygodnością danych. Taki wynik sugeruje, że dane z tego kraju są dokładniejsze i bardziej reprezentatywne, co najprawdopodobniej jest efektem większej liczby uczestników ankiety. Na stronie Numbeo jest bardzo dużo aktywnych użytkowników z Kanady, którzy regularnie udostępniają informacje o cenach. Ponadto wyższy wskaźnik wiarygodności może również świadczyć o lepszym procesie weryfikacji danych w tym regionie, co przekłada się na ich jakość.
+
+Pozostałe miejsca zajmują głównie kraje europejskie. Również tutaj możemy wysnuć wniosek, że użytkownicy Numbeo są bardziej aktywni w tym regionie, dzięki czemu dane są bardziej reprezentatywne. Wyższy wskaźnik wiarygodności może także wynikać z większej stabilności ekonomicznej krajów europejskich i braku gwałtownych zmian cen. Poza tym poziom życia w europejskich miastach jest porównywalny z sąsiednimi miastami. Nie obserwuje się znaczących różnic. Ułatwia to uzyskanie spójnych i wiarygodnych danych. Ponadto możemy przypuszczać, że spory wkład w weryfikację danych mają różne instytuty, urzędy oraz uczelnie. Działalność tych instytucji w Europie uchodzi za rzetelną. Zapewne pomaga to Numbeo dokonać weryfikacji danych.
+
+9\. miejsce zajmuje Australia. Jej stopień zweryfikowanych danych wynika prawdopodobnie z tych samych powodów, które były omówione wcześniej. Na jej niższe miejsce w rankingu mógł jednak wpłynąć fakt, że pomimo posiadania co najmniej 50 miast w danych, wiele z nich posiada cenę tylko kilku produktów. Jest również wiele miast, które nie mają podanych żadnych cen. To sprawia, że Numbeo nie może uznać tych danych za wiarygodne.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+# Wybieramy państwa, które mają co najmniej 50 miast
+cities_per_country <- data %>%
+  group_by(Panstwo) %>%
+  summarise(n_cities = n_distinct(Miasto)) %>%
+  filter(n_cities >= 50)
+
+# Obliczamy procentowy udział jedynek w kolumnie 'jakosc' dla każdego państwa
+jakosc_procent <- data %>%
+  filter(Panstwo %in% cities_per_country$Panstwo) %>%
+  group_by(Panstwo) %>%
+  summarise(procent_jedynki = mean(jakosc == 1) * 100)
+
+# Tworzymy wykres kolumnowy dla 10 państw z największym stosunkiem
+top_10_max_ratio <- jakosc_procent %>%
+  arrange(desc(procent_jedynki)) %>%
+  head(10)
+
+# Tłumaczymy nazwy państw na polski
+top_10_max_ratio <- top_10_max_ratio %>%
+  mutate(Panstwo = recode(Panstwo, !!!country_translation))
+
+ggplot(top_10_max_ratio, aes(x = reorder(Panstwo, procent_jedynki), y = procent_jedynki, fill = Panstwo)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  
+  labs(title = "10 państw z największym stosunkiem \ndanych zweryfikowanych (Rys. 9)",
+       x = "Państwo", y = "Procent danych zweryfikowanych") +
+  theme_minimal() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 24))
+```
+
+#### 10 państw z najmniejszym stosunkiem danych zweryfikowanych
+
+Analogicznie postanowiliśmy sprawdzić, jak sytuacja wygląda dla 10 najmniej wiarygodnych państw. Spójrzmy na wykres (Rys. 10). Widzimy, że kraje te reprezentują różne regiony świata i żaden rejon nie wyróżnia się na tle innych. Możemy zaobserwować natomiast, iż większość państw jest dużych pod względem powierzchni i liczby ludności. Część z nich cechuje się także niższym poziomem zamożności.
+
+Głównym problemem wpływającym na niską wiarygodność danych jest brak informacji odnośnie cen produktów dla wielu miast. To prowadzi do obniżenia jakości danych, która w takich przypadkach jest oceniana jako 0. W dużych krajach respondenci portalu Numbeo koncentrują się głównie w największych metropoliach, gdzie aktywność użytkowników jest wyższa. Tymczasem wiele mniejszych miast i regionów pozostaje niedoreprezentowanych, co skutkuje lukami w danych. Brak zgłoszeń cen produktów z takich obszarów prowadzi do niskiej jakości danych dla całego kraju. Ponadto w krajach mniej zamożnych ograniczone zasoby finansowe i niższy poziom rozwoju gospodarczego mogą wpływać na mniejszy dostęp do usług, jak chociażby Internet. Co za tym idzie, użytkownicy mogą rzadziej korzystać z portali takich jak Numbeo, co prowadzi do niedostatecznej liczby zgłoszeń cen. W rezultacie kraje te borykają się z wyzwaniem braku reprezentatywności i niskiej jakości danych w portalu. Poza tym Numbeo może nie cieszyć się dużą popularnością w niektórych krajach. Ograniczona liczba użytkowników korzystających z platformy oznacza mniej zgłoszeń i mniejsze zaangażowanie w aktualizowanie danych. Dodatkowo w niektórych państwach instytucje rządowe i inne organizacje nie dzielą się swoimi danymi na temat cen produktów i kosztów życia z portalem Numbeo. Brak dostępu do oficjalnych danych, które mogłyby uzupełniać i potwierdzać zgłoszenia użytkowników, powoduje, że informacje z tych krajów są mniej kompletne i wiarygodne. W takich przypadkach portal opiera się wyłącznie na danych dostarczonych przez użytkowników, co zwiększa ryzyko błędów i nieścisłości.
+
+```{r}
+#| echo: false
+#| fig.width: 9
+#| fig.height: 14
+
+# Tworzymy wykres kolumnowy dla 10 państw z najmniejszym stosunkiem
+top_10_min_ratio <- jakosc_procent %>%
+  arrange(procent_jedynki) %>%
+  head(10)
+
+# Tłumaczymy nazwy państw na polski
+top_10_min_ratio <- top_10_min_ratio %>%
+  mutate(Panstwo = recode(Panstwo, !!!country_translation))
+
+ggplot(top_10_min_ratio, aes(x = reorder(Panstwo, -procent_jedynki), y = procent_jedynki, fill = Panstwo)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  
+  labs(title = "10 państw z najmniejszym stosunkiem \ndanych zweryfikowanych (Rys. 10)",
+       x = "Państwo", y = "Procent danych zweryfikowanych") +
+  theme_minimal() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 16),  
+        axis.text.y = element_text(size = 16),                        
+        axis.title.x = element_text(size = 20),                       
+        axis.title.y = element_text(size = 20),                       
+        plot.title = element_text(hjust = 0.5, size = 24))
+```
+
+#### Podsumowanie podpunktu 3
+
+Analiza danych z portalu Numbeo pozwoliła na wyciągnięcie kilku istotnych wniosków dotyczących wiarygodności informacji na temat kosztów życia w różnych krajach i miastach. W wyniku przeprowadzonej analizy zauważyliśmy, że największy wpływ na wiarygodność danych mają braki cen dla niektórych produktów, co skutkuje niższą jakością danych i koniecznością ich dalszej weryfikacji. Braki te są najprawdopodobniej wynikiem niskiej liczby zgłoszeń od użytkowników z różnych miast i regionów, szczególnie w krajach o dużych obszarach oraz w mniej zamożnych państwach.
+
+W krajach o wysokim wskaźniku wiarygodności, takich jak Kanada czy niektóre państwa europejskie, liczba zgłoszeń jest wystarczająco duża, co pozwala na uzyskanie bardziej reprezentatywnych danych. Dodatkowo stabilność ekonomiczna, bardziej jednorodne poziomy życia oraz lepsza współpraca z instytucjami mogą wspierać proces weryfikacji danych. Z kolei w państwach, gdzie użytkownicy koncentrują się głównie w metropoliach, a mniejsze miasta są słabiej reprezentowane, dane są mniej kompletne, co obniża ich jakość.
+
+W krajach mniej zamożnych, gdzie dostęp do Internetu jest ograniczony, a liczba użytkowników Numbeo jest mniejsza, problemem jest niedostateczna liczba zgłoszeń, co prowadzi do braku reprezentatywności danych. Dodatkowo brak współpracy z instytucjami rządowymi i organizacjami, które mogłyby dostarczyć oficjalnych danych o cenach produktów, również utrudnia weryfikację informacji.
+
+Ostatecznie możemy stwierdzić, że głównym wyzwaniem, które wpływa na wiarygodność danych w portalu Numbeo, są braki informacji o cenach dla wielu produktów, szczególnie w krajach o dużych powierzchniach, mniejszym poziomie zamożności oraz w regionach z mniejszą liczbą aktywnych użytkowników.
+
+## Podsumowanie raportu
+
+Celem raportu była szczegółowa analiza cen wybranych produktów w zależności od ich lokalizacji oraz identyfikacja kluczowych czynników wpływających na ich wysokość. Dane wykorzystane w opracowaniu pochodziły z portalu Numbeo, który gromadzi informacje o kosztach życia na całym świecie. Analiza obejmowała m.in. ceny produktów spożywczych, usług, paliwa, nieruchomości oraz średnich wynagrodzeń w miastach różnych krajów w 2022 roku.
+
+#### Różnice w cenach: stolice vs. inne miasta
+
+Badanie wykazało istotne różnice w cenach pomiędzy stolicami a pozostałymi miastami (w naszym przypadku określenie „pomiędzy stolicami a pozostałymi miastami” odnosi się do sytuacji, gdzie porównujemy cenę w stolicy do mediany cen z innych miast). W stolicach ceny produktów spożywczych były średnio wyższe o kilkanaście procent. Wyższe ceny wynikały głównie z bardziej złożonych łańcuchów dostaw oraz większych kosztów operacyjnych, takich jak wynajem powierzchni handlowych. Z kolei ceny usług w stolicach przewyższały te z pozostałych miast o kilkadziesiąt procent, co związane było z wyższymi kosztami prowadzenia działalności oraz dużym popytem na usługi o wyższym standardzie.
+
+Największe różnice odnotowano w przypadku nieruchomości. Średnia cena za metr kwadratowy w centrach stolic była o 200% wyższa niż w innych miastach, a poza centrum – o 140%. Dysproporcje te wynikają z ograniczonej podaży gruntów, prestiżu lokalizacji oraz koncentracji kluczowych instytucji w stolicach. Jedyną kategorią, która pozostawała względnie stabilna, były ceny paliwa – regulacje państwowe i równy dostęp do infrastruktury dystrybucyjnej sprawiały, że różnice były znikome. Średnie wynagrodzenia w stolicach były jednak wyższe o 54% w porównaniu do reszty kraju, co związane było z koncentracją wysoko płatnych sektorów gospodarki oraz koniecznością dostosowania płac do wyższych kosztów życia.
+
+#### Chiny i Kanada – skrajne przykłady
+
+Przykładem kraju o największych różnicach cenowych były Chiny, gdzie Pekin znacząco wyróżniał się pod względem kosztów życia. Ceny nieruchomości w stolicy były wyższe o 400% w centrum i o 367% poza nim w porównaniu do innych miast. Również ceny usług, takich jak transport publiczny, były znacznie wyższe – miesięczny bilet komunikacyjny w Pekinie kosztował o 176% więcej niż w innych miastach. Wysokie ceny w stolicy Chin są wynikiem intensywnej urbanizacji, ograniczonej podaży gruntów oraz dużego popytu na prestiżowe lokalizacje. Dodatkowym czynnikiem kształtującym tak wysokie różnice cenowe jest masowa migracja ludności z prowincjonalnych miejscowości do dużych miast, a zwłaszcza do stolicy, co generuje rosnący popyt na mieszkania, usługi i infrastrukturę. Wpływ na tę sytuację ma także niezwykle dynamiczny rozwój chińskiej gospodarki, który przyczynił się do zwiększenia dochodów ludności i wzrostu konsumpcji, zwłaszcza w dużych ośrodkach miejskich. Kształtowanie się cen w Pekinie względem innych miast wpisuje się w ogólnoświatowy trend, gdzie stolice i metropolie często stanowią najdroższe lokalizacje w kraju.
+
+Z kolei Kanada wyróżniała się niewielkimi różnicami między Ottawą a pozostałymi miastami. Ceny produktów spożywczych w stolicy były nawet niższe niż w reszcie kraju, co wynikało z bliskości lokalnych dostawców (region rolniczy) i konkurencyjności rynku. Koszty usług były zbliżone do mediany krajowej, z wyjątkiem komunikacji publicznej, gdzie bilety były droższe o 45%, co wynikało z bardziej rozbudowanej infrastruktury transportowej. Stabilny rynek nieruchomości oraz umiarkowane różnice w wynagrodzeniach sprawiały, że Ottawa nie wykazywała tak dużych dysproporcji jak stolice innych krajów. Warto również zauważyć, że w Kanadzie większe znaczenie ekonomiczne i społeczne mają miasta takie jak Vancouver czy Toronto, które pełnią rolę kluczowych centrów gospodarczych i kulturalnych. Ottawa natomiast pełni przede wszystkim funkcję stolicy kraju, będąc ośrodkiem administracyjnym i politycznym.
+
+#### Analiza danych dla Polski i wybór najlepszego miasta do życia
+
+Dalsza część analizy była skupiona na pojedynczym kraju – Polsce. Spośród wszystkich czynników największe różnice w cenach pomiędzy poszczególnymi miastami zaobserwowano dla ceny za 1 m\^2 nieruchomości w centrum miasta i poza nim oraz kosztów utrzymania mieszkania o powierzchni 85 m\^2. Poza tym podczas analizy ważną rolę odgrywała średnia pensja w danym mieście – to właśnie do niej odnoszono wartości wymienionych czynników. Wyłoniono 3 miasta, charakteryzujące się niskim stosunkiem ceny za 1 m\^2 w centrum miasta i poza nim oraz niskim udziałem procentowym kosztów utrzymania mieszkania w średniej miesięcznej pensji. Miastami tymi są: Rawa Mazowiecka, Łomża i Świdnica, i to właśnie one zostały uznane za najlepsze miasta do życia w Polsce. Podczas analizy dla Polski zaobserwowano również, że koszty życia są niższe dla mniejszych miast. Jako dobre miejsce do życia został wyróżniony Będzin, który charakteryzował się wysoką średnią pensją, związaną z bliską lokalizacją zakładów przemysłowych, hut, kopalń i elektrowni, a jednocześnie niskimi kosztami utrzymania mieszkań. Udział procentowy wysokości kosztów utrzymania mieszkania w średniej pensji w tym mieście wynosi jedynie 9%, co jest wynikiem znacząco odbiegającym od reszty kraju, gdzie najczęściej notuje się wartości w okolicach 20-30%.
+
+#### Wiarygodność danych
+
+Analiza danych z portalu Numbeo ujawniła, że wskaźnik wiarygodności w analizowanej próbce wyniósł zaledwie 18,7%. Niski poziom zweryfikowanych danych wskazuje na trudności w uzyskaniu pełnych i reprezentatywnych informacji o kosztach życia w różnych krajach i miastach. Głównym problemem jest brak zgłoszeń dotyczących cen produktów i usług dla wielu lokalizacji. Powodów takiego stanu rzeczy jest kilka. W dużych krajach respondenci koncentrują się głównie w największych metropoliach, pozostawiając mniejsze miasta i regiony niedoreprezentowane. Dodatkowo kraje mniej zamożne, gdzie dostęp do Internetu jest ograniczony, cechuje mniejsza liczba użytkowników korzystających z portalu, co przekłada się na brak kompletności danych. Poza tym Numbeo może nie cieszyć się dużą popularnością w niektórych krajach. Ograniczona liczba użytkowników korzystających z platformy oznacza mniej zgłoszeń i mniejsze zaangażowanie w aktualizowanie danych. Niską wiarygodność pogłębia także brak współpracy z instytucjami rządowymi czy lokalnymi organizacjami, które mogłyby dostarczać oficjalnych informacji o cenach. W takich przypadkach Numbeo musi polegać wyłącznie na zgłoszeniach użytkowników, co zwiększa ryzyko błędów i niespójności. Dodatkowo w szybko zmieniających się gospodarkach starsze dane mogą nie odzwierciedlać aktualnej sytuacji. Z drugiej strony, kraje takie jak Kanada czy państwa europejskie charakteryzują się wyższym wskaźnikiem wiarygodności, który w ich przypadku wynika z dużej liczby aktywnych użytkowników oraz stabilności gospodarczej. Regularne zgłoszenia od licznych użytkowników zapewniają bardziej spójne dane, a współpraca z lokalnymi instytucjami umożliwia ich skuteczniejszą weryfikację. Stabilność ekonomiczna dodatkowo wspiera proces gromadzenia reprezentatywnych informacji.
+
+Do analizy danych został wykorzystany język programowania R. Raport został stworzony przy pomocy otwartoźródłowego zintegrowanego środowiska programistycznego Rstudio.
+
+## Bibliografia
+
+W celu przeprowadzenia analizy danych i poprawnej interpretacji wyników, czerpaliśmy wiedzę z wymienionych poniżej stron:
+
+#### Informacje o Chinach:
+
+-   https://www.chinskiraport.pl/blog/pekin-koszty-zycia/
+
+-   https://warsawinstitute.org/pl/pekin-stawia-na-wielkie-aglomeracje/
+
+-   https://obserwatorgospodarczy.pl/2023/02/03/pekin-zapowiada-transformacje-chinskiego-sektora-nieruchomosci/
+
+-   https://www.bankier.pl/wiadomosc/Polak-o-zyciu-w-Pekinie-Sa-korzysci-ale-to-tez-udreka-Tam-mieszkam-7272140.html
+
+-   https://www.ablison.com/pl/pros-and-cons-of-living-in-china/?utm_content=cmp-true
+
+-   https://aktinet.pl/jak-industrializacja-zmienila-chiny/
+
+#### Informacje o Kanadzie:
+
+-   https://pl.immigrant.today/canada/18323-transport-miejski-w-kanadzie.html
+-   https://pl.traveltables.com/country/canada/cost-of-living/
+
+#### Informacje na temat miasta Będzin:
+
+-   https://www.bedzin.pl/
+-   https://pl.wikipedia.org/wiki/B%C4%99dzin
+
+#### Numbeo:
+
+-   https://www.numbeo.com/quality-of-life/
+
+#### Dane wykorzystane w raporcie:
+
+-   https://www.kaggle.com/datasets/mvieira101/global-cost-of-living/data
