@@ -1,5 +1,5 @@
-## Koszty życia na świecie
-# pakiety statystyczne raport 1
+# Koszty życia na świecie
+## pakiety statystyczne raport 1
 
 ## Cel raportu
 Celem raportu jest zbadanie na podstawie zgromadzonych danych, dotyczących kosztów życia na całym świecie w 2022 roku, jak zmieniają się ceny wybranych produktów w zależności od miejsca i odkrycie czynników wpływających na ich wysokość. Aby zrealizować cel raportu, poszukamy odpowiedzi na następujące pytania badawcze:
